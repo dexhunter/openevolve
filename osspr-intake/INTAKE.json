@@ -1,0 +1,50 @@
+[
+  {
+    "upstream_repo": "algorithmicsuperintelligence/openevolve",
+    "head_sha": "3e72b5bcce27cdd948d8cdff2fa00e67c4d6066c",
+    "file": "openevolve/utils/code_utils.py",
+    "function": "_find_search_lines",
+    "native_test_cmd": "python3 -m unittest discover -s tests -p \"test_*.py\"",
+    "bench_cmd": "python3 osspr-intake/harness/bench_find_search_allocs.py",
+    "metric_kind": "allocations",
+    "baseline_value": 13371,
+    "baseline_noise_pct": 0.0,
+    "metric_benchmark": "python3 osspr-intake/harness/bench_find_search_allocs.py",
+    "labeled_data": null,
+    "tests_pass_on_baseline": true,
+    "workload": "One SEARCH of the last 80 lines of openevolve/database.py (2911 lines) with three trailing spaces added per line, so exact match fails and the whitespace-tolerant scan runs.",
+    "notes": "Each candidate offset allocates a fresh line slice, and the trailing-whitespace pass also calls rstrip() on every line of every window, so this one late block allocates 13371 objects. Building the rstripped lines once and comparing those slices returns the same index. Overlap: open PR #480 edits code_utils.py only in parse_evolve_blocks; PRs merged since 2026-10-14 (#523, #544, #546, #560, #590, #594) edit parse_full_rewrite, extract_diffs, _extract_standard_diffs, extract_code_language, and split_diffs_by_target, not _find_search_lines. dexhunter PRs #469, #477, and #478 do not touch it. No open issue marks the matcher deprecated. Noise is (max-min)/median*100 over 5 calls; all five were 13371, and separate processes matched."
+  },
+  {
+    "upstream_repo": "algorithmicsuperintelligence/openevolve",
+    "head_sha": "3e72b5bcce27cdd948d8cdff2fa00e67c4d6066c",
+    "file": "openevolve/database.py",
+    "function": "ProgramDatabase._population_snapshot",
+    "native_test_cmd": "python3 -m unittest discover -s tests -p \"test_*.py\"",
+    "bench_cmd": "python3 osspr-intake/harness/bench_snapshot_allocs.py",
+    "metric_kind": "allocations",
+    "baseline_value": 57902,
+    "baseline_noise_pct": 0.0,
+    "metric_benchmark": "python3 osspr-intake/harness/bench_snapshot_allocs.py",
+    "labeled_data": null,
+    "tests_pass_on_baseline": true,
+    "workload": "One snapshot of a steady 1000-program, 5-island database (shipped population_size) whose code is examples/circle_packing/best_program.py and whose metrics are the circle-packing evaluator keys.",
+    "notes": "The snapshot deep-copies every program's metrics and metadata, including a deepcopy memo per program, which is what a population-strategy admission, cell replacement, eviction, or migration pays. Those values are plain dicts of str and float; Program.to_dict already copies that shape with _copy_field_value, and using the same copy here keeps the independent mappings test_population_strategy compares. _population_snapshot is absent from the open database.py diffs: #80 (_enforce_population_limit), #369/#403/#458 (_llm_judge_novelty and best-program updates), #416 (other methods), #429 (__init__), #443 (_sample_from_island_weighted), #456 (sample_from_island), #480 (add/sample/save/load/migrate), #537 (get_artifacts), #586 (save/artifacts). It is also absent from PRs merged since 2026-10-14: #477 (to_dict, _fast_code_diversity, _cache_diversity_value, _update_feature_stats), #524 (migrate_programs), #528 (add), #530 (_reconstruct_islands), #567 (log_prompt). dexhunter #478 is save() and #477 is the functions just listed. Noise is (max-min)/median*100 over 5 steady-state calls; all five were 57902."
+  },
+  {
+    "upstream_repo": "algorithmicsuperintelligence/openevolve",
+    "head_sha": "3e72b5bcce27cdd948d8cdff2fa00e67c4d6066c",
+    "file": "openevolve/prompt/sampler.py",
+    "function": "PromptSampler._apply_security_filter",
+    "native_test_cmd": "python3 -m unittest discover -s tests -p \"test_*.py\"",
+    "bench_cmd": "python3 osspr-intake/harness/bench_security_filter_peak.py",
+    "metric_kind": "peak_memory_bytes",
+    "baseline_value": 1415293,
+    "baseline_noise_pct": 0.0,
+    "metric_benchmark": "python3 osspr-intake/harness/bench_security_filter_peak.py",
+    "labeled_data": null,
+    "tests_pass_on_baseline": true,
+    "workload": "One filter call on a 128 KiB benchmark log (tiled examples/mlx_metal_kernel_opt/evaluator.py plus ANSI codes, 36-character tokens, sk- keys, and password assignments), above the 32 KiB artifact-file threshold and before the 20 KiB prompt truncation.",
+    "notes": "The filter runs four re.sub passes, and each pass allocates a full copy, before _render_artifacts truncates the text to 20 KiB. Peak traced memory on this 128 KiB input is 1415293 bytes. One compiled pass can return the same redacted string from a single output buffer. Overlap: open PRs #393, #431, #458, and #480 edit sampler.py in build_prompt, _format_evolution_history, _format_inspirations_section, _identify_improvement_areas, _extract_unique_features, and _render_artifacts, not _apply_security_filter. No PR merged in the last 30 days edits sampler.py (#539 edits prompts/defaults/fragments.json). Issue #367 is about prompt wording, not this filter. dexhunter PRs do not touch it. Noise is (max-min)/median*100 over 5 tracemalloc peaks; all five were 1415293, and five processes matched."
+  }
+]
